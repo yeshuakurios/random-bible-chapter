@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Random Bible Chapter</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📖</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>Random Bible Chapter</h1>
+    <p class="subtitle">Read through the whole Bible, one random chapter at a time, with no repeats.</p>
+
+    <div class="card">
+      <div id="chapter-display">Press the button to get a chapter</div>
+      <div class="buttons">
+        <button id="get-btn" class="primary">Get Random Chapter</button>
+        <div class="button-row">
+          <button id="mark-btn" disabled>Mark as Read</button>
+          <button id="skip-btn" disabled>Skip</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress">
+      <div class="progress-track">
+        <div id="progress-bar"></div>
+      </div>
+      <span id="progress-text">0 / 1189 chapters read</span>
+    </div>
+
+    <p id="empty-state" hidden>
+      🎉 You've read every chapter! Reset below to start a new random cycle.
+    </p>
+
+    <details>
+      <summary>Reading history</summary>
+      <ul id="history-list"></ul>
+      <button id="reset-btn">Reset reading history</button>
+    </details>
+
+    <footer>
+      Progress is stored only in this browser (localStorage) — no account, no server.
+    </footer>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
