@@ -11,6 +11,7 @@ const els = {
   historyList: document.getElementById("history-list"),
   resetBtn: document.getElementById("reset-btn"),
   emptyState: document.getElementById("empty-state"),
+  actionRow: document.getElementById("action-row"),
 };
 
 const TOTAL_CHAPTERS = BIBLE_BOOKS.reduce((sum, [, count]) => sum + count, 0);
@@ -58,31 +59,38 @@ function secureRandomInt(max) {
   return value % max;
 }
 
-function pickRandomUnread(readSet) {
-  const unread = allChapterKeys().filter((k) => !readSet.has(k));
+function pickRandomUnread(readSet, excludeKey) {
+  let unread = allChapterKeys().filter((k) => !readSet.has(k));
   if (unread.length === 0) return null;
+  if (excludeKey) {
+    const withoutExclude = unread.filter((k) => k !== excludeKey);
+    if (withoutExclude.length > 0) unread = withoutExclude;
+  }
   return unread[secureRandomInt(unread.length)];
 }
 
 function render() {
   const readSet = loadReadSet();
-  const pending = loadPending();
+  let pending = loadPending();
+
+  // Self-heal state left over from an older version of the app (or a
+  // corrupted/edited storage) where reading history exists but there's no
+  // chapter queued up — without this, the Get button would stay hidden
+  // (since `started` is true) with no way left to fetch a new chapter.
+  if (pending === null && readSet.size > 0 && readSet.size < TOTAL_CHAPTERS) {
+    pending = pickRandomUnread(readSet);
+    savePending(pending);
+  }
+
+  const started = pending !== null || readSet.size > 0;
 
   els.progressText.textContent = `${readSet.size} / ${TOTAL_CHAPTERS} chapters read`;
   els.progressBar.style.width = `${(readSet.size / TOTAL_CHAPTERS) * 100}%`;
 
-  if (pending) {
-    els.chapter.textContent = pending;
-    els.markBtn.disabled = false;
-    els.skipBtn.disabled = false;
-  } else {
-    els.chapter.textContent = "Press the button to get a chapter";
-    els.markBtn.disabled = true;
-    els.skipBtn.disabled = true;
-  }
-
+  els.chapter.textContent = pending || "Press the button to get a chapter";
+  els.getBtn.hidden = started;
+  els.actionRow.hidden = pending === null;
   els.emptyState.hidden = readSet.size < TOTAL_CHAPTERS;
-  els.getBtn.disabled = readSet.size >= TOTAL_CHAPTERS;
 
   renderHistory(readSet);
 }
@@ -121,12 +129,14 @@ function handleMark() {
   const readSet = loadReadSet();
   readSet.add(pending);
   saveReadSet(readSet);
-  savePending(null);
+  savePending(pickRandomUnread(readSet));
   render();
 }
 
 function handleSkip() {
-  savePending(null);
+  const pending = loadPending();
+  const readSet = loadReadSet();
+  savePending(pickRandomUnread(readSet, pending));
   render();
 }
 

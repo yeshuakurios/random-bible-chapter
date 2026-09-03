@@ -1,0 +1,14 @@
+{
+  "name": "Random Bible Chapter",
+  "short_name": "Bible Chapter",
+  "description": "Read through the Bible one random, never-repeated chapter at a time.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#4a2c18",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
