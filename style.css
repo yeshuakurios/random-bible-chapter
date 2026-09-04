@@ -190,6 +190,155 @@ summary {
   font-size: 0.9rem;
 }
 
+.stats-card {
+  margin-top: 1.5rem;
+  text-align: left;
+  padding: 1.25rem 1.5rem;
+}
+
+.stats-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+#today-count {
+  margin: 0 0 0.6rem;
+  font-weight: bold;
+  color: var(--accent-dark);
+}
+
+.today-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.85rem;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.today-list li {
+  padding: 0.3rem 0;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.today-list li:last-child {
+  border-bottom: none;
+}
+
+.today-list li.muted,
+.achievements-list li.muted {
+  color: var(--muted);
+  font-style: italic;
+  border-bottom: none;
+}
+
+.trend-text {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.achievements-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.achievements-list li {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.achievements-list li:last-child {
+  border-bottom: none;
+}
+
+.book-map h3 {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 1rem 0 0.5rem;
+}
+
+.book-map h3:first-child {
+  margin-top: 0;
+}
+
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 0.4rem;
+}
+
+.book-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: var(--text);
+  cursor: default;
+}
+
+.book-cell::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: var(--pct, 0%);
+  background: var(--accent);
+  opacity: 0.55;
+  z-index: 0;
+  transition: height 0.3s ease;
+}
+
+.book-cell span {
+  position: relative;
+  z-index: 1;
+}
+
+.toast-container {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 100;
+  width: min(90vw, 420px);
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--accent-dark);
+  color: #fff;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 footer {
   text-align: center;
   color: var(--muted);

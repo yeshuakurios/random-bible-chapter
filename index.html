@@ -41,11 +41,30 @@
       🎉 You've read every chapter! Reset below to start a new random cycle.
     </p>
 
+    <div class="card stats-card">
+      <h2>Today</h2>
+      <p id="today-count">0 chapters read today</p>
+      <ul id="today-list" class="today-list"></ul>
+      <p id="trend-text" class="trend-text"></p>
+    </div>
+
     <details>
       <summary>Reading history</summary>
       <ul id="history-list"></ul>
       <button id="reset-btn">Reset reading history</button>
     </details>
+
+    <details>
+      <summary>Achievements <span id="achievements-count"></span></summary>
+      <ul id="achievements-list" class="achievements-list"></ul>
+    </details>
+
+    <details>
+      <summary>Book progress</summary>
+      <div id="book-map" class="book-map"></div>
+    </details>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <footer>
       Progress is stored only in this browser (localStorage) — no account, no server.
