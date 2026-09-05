@@ -40,6 +40,15 @@ const els = {
   restoreInput: document.getElementById("restore-input"),
   restoreBtn: document.getElementById("restore-btn"),
   backupStatus: document.getElementById("backup-status"),
+  rankName: document.getElementById("rank-name"),
+  levelBadge: document.getElementById("level-badge"),
+  xpBar: document.getElementById("xp-bar"),
+  xpText: document.getElementById("xp-text"),
+  levelupModal: document.getElementById("levelup-modal"),
+  levelupLevel: document.getElementById("levelup-level"),
+  levelupRank: document.getElementById("levelup-rank"),
+  levelupRankup: document.getElementById("levelup-rankup"),
+  levelupDismiss: document.getElementById("levelup-dismiss"),
 };
 
 const TOTAL_CHAPTERS = BIBLE_BOOKS.reduce((sum, [, count]) => sum + count, 0);
@@ -51,6 +60,57 @@ const NT_TOTAL = NT_BOOKS.reduce((sum, [, count]) => sum + count, 0);
 const HALFWAY = Math.round(TOTAL_CHAPTERS / 2);
 const MILESTONES = [1, 10, 25, 50, 100, 250, HALFWAY, 750, 1000, TOTAL_CHAPTERS];
 const TREND_WINDOW_DAYS = 7;
+
+// --- XP, levels, and ranks. Levels grow linearly (a flat XP amount per
+// level, not an escalating one) so progress always feels the same weight.
+const XP_PER_CHAPTER = 10;
+const XP_PER_LEVEL = 100;
+
+const RANKS = [
+  { min: 1, name: "Seeker" },
+  { min: 10, name: "Disciple" },
+  { min: 20, name: "Follower of the Way" },
+  { min: 30, name: "Psalmist" },
+  { min: 40, name: "Scribe" },
+  { min: 50, name: "Watchman" },
+  { min: 60, name: "Evangelist" },
+  { min: 70, name: "Shepherd" },
+  { min: 80, name: "Elder" },
+  { min: 90, name: "Prophet" },
+  { min: 100, name: "Apostle" },
+  { min: 110, name: "Sage of Scripture" },
+  { min: 120, name: "Faithful Witness" },
+  { min: 130, name: "Keeper of the Covenant" },
+];
+
+function milestoneXp(n) {
+  if (n === TOTAL_CHAPTERS) return 500;
+  if (n === HALFWAY) return 100;
+  return 20;
+}
+
+function computeTotalXp(readSet, achievements) {
+  const chapterXp = readSet.size * XP_PER_CHAPTER;
+  const bonusXp = achievements.reduce((sum, a) => sum + (a.xp || 0), 0);
+  return chapterXp + bonusXp;
+}
+
+function levelForXp(xp) {
+  return Math.floor(xp / XP_PER_LEVEL) + 1;
+}
+
+function xpIntoLevel(xp) {
+  return xp % XP_PER_LEVEL;
+}
+
+function getRank(level) {
+  let current = RANKS[0];
+  for (const r of RANKS) {
+    if (level >= r.min) current = r;
+    else break;
+  }
+  return current;
+}
 
 function allChapterKeys() {
   const keys = [];
@@ -202,7 +262,7 @@ function computeNewBadges(newReadSet, markedKey) {
   for (const m of MILESTONES) {
     if (n === m) {
       const id = `milestone-${m}`;
-      if (!unlocked.has(id)) newBadges.push({ id, label: milestoneLabel(m) });
+      if (!unlocked.has(id)) newBadges.push({ id, label: milestoneLabel(m), xp: milestoneXp(m) });
     }
   }
 
@@ -211,7 +271,7 @@ function computeNewBadges(newReadSet, markedKey) {
   const bookTotal = BIBLE_BOOKS.find(([b]) => b === book)[1];
   if (bookCounts.get(book) === bookTotal) {
     const id = `book-${book}`;
-    if (!unlocked.has(id)) newBadges.push({ id, label: `Finished the book of ${book}! 📖` });
+    if (!unlocked.has(id)) newBadges.push({ id, label: `Finished the book of ${book}! 📖`, xp: 25 });
   }
 
   const isOT = BOOK_INDEX.get(book) < OT_BOOKS.length;
@@ -221,7 +281,7 @@ function computeNewBadges(newReadSet, markedKey) {
   if (testamentReadCount === testamentTotal) {
     const name = isOT ? "Old Testament" : "New Testament";
     const id = `testament-${name}`;
-    if (!unlocked.has(id)) newBadges.push({ id, label: `Finished the ${name}! 🎉` });
+    if (!unlocked.has(id)) newBadges.push({ id, label: `Finished the ${name}! 🎉`, xp: 100 });
   }
 
   return newBadges;
@@ -251,6 +311,22 @@ function showToasts(newBadges) {
   });
 }
 
+function showLevelUp(newLevel, oldRank, newRank) {
+  const rankedUp = newRank.name !== oldRank.name;
+  els.levelupLevel.textContent = `Level ${newLevel}`;
+  els.levelupRank.textContent = newRank.name;
+  els.levelupRankup.hidden = !rankedUp;
+  els.levelupModal.hidden = false;
+  requestAnimationFrame(() => els.levelupModal.classList.add("show"));
+}
+
+function hideLevelUp() {
+  els.levelupModal.classList.remove("show");
+  setTimeout(() => {
+    els.levelupModal.hidden = true;
+  }, 300);
+}
+
 // --- Rendering
 
 function render() {
@@ -277,11 +353,24 @@ function render() {
   els.actionRow.hidden = pending === null;
   els.emptyState.hidden = readSet.size < TOTAL_CHAPTERS;
 
+  renderLevel(readSet);
   renderToday(log);
   renderTrend(log, readSet);
   renderHistory(readSet);
   renderAchievements();
   renderBookMap(readSet);
+}
+
+function renderLevel(readSet) {
+  const xp = computeTotalXp(readSet, loadAchievements());
+  const level = levelForXp(xp);
+  const rank = getRank(level);
+  const xpInLevel = xpIntoLevel(xp);
+
+  els.rankName.textContent = rank.name;
+  els.levelBadge.textContent = `Lv ${level}`;
+  els.xpBar.style.width = `${(xpInLevel / XP_PER_LEVEL) * 100}%`;
+  els.xpText.textContent = `${xpInLevel} / ${XP_PER_LEVEL} XP to next level`;
 }
 
 function renderToday(log) {
@@ -411,17 +500,26 @@ function handleGet() {
 function handleMark() {
   const pending = loadPending();
   if (!pending) return;
-  const log = loadReadLog();
-  log.push({ k: pending, t: Date.now() });
+
+  const oldLog = loadReadLog();
+  const oldReadSet = readKeysSet(oldLog);
+  const oldLevel = levelForXp(computeTotalXp(oldReadSet, loadAchievements()));
+
+  const log = [...oldLog, { k: pending, t: Date.now() }];
   saveReadLog(log);
 
   const newReadSet = readKeysSet(log);
   const newBadges = computeNewBadges(newReadSet, pending);
   persistAchievements(newBadges);
 
+  const newLevel = levelForXp(computeTotalXp(newReadSet, loadAchievements()));
+
   savePending(pickRandomUnread(newReadSet));
   render();
   showToasts(newBadges);
+  if (newLevel > oldLevel) {
+    showLevelUp(newLevel, getRank(oldLevel), getRank(newLevel));
+  }
 }
 
 function handleSkip() {
@@ -487,6 +585,10 @@ els.skipBtn.addEventListener("click", handleSkip);
 els.resetBtn.addEventListener("click", handleReset);
 els.backupBtn.addEventListener("click", handleBackup);
 els.restoreBtn.addEventListener("click", handleRestore);
+els.levelupDismiss.addEventListener("click", hideLevelUp);
+els.levelupModal.addEventListener("click", (e) => {
+  if (e.target === els.levelupModal) hideLevelUp();
+});
 
 // Ask the browser not to evict this site's storage under normal storage
 // pressure (supported on Chrome/Firefox/Edge; Safari ignores the call but
