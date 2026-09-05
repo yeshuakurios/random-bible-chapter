@@ -488,4 +488,12 @@ els.resetBtn.addEventListener("click", handleReset);
 els.backupBtn.addEventListener("click", handleBackup);
 els.restoreBtn.addEventListener("click", handleRestore);
 
+// Ask the browser not to evict this site's storage under normal storage
+// pressure (supported on Chrome/Firefox/Edge; Safari ignores the call but
+// it's harmless there). This has no effect on iOS's separate, stricter
+// privacy-driven eviction of Home Screen web app storage.
+if (navigator.storage?.persist) {
+  navigator.storage.persist();
+}
+
 render();
