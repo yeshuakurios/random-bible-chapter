@@ -30,6 +30,17 @@
       </div>
     </div>
 
+    <div class="card level-card">
+      <div class="level-header">
+        <span id="rank-name" class="rank-name">Seeker</span>
+        <span id="level-badge" class="level-badge">Lv 1</span>
+      </div>
+      <div class="xp-track">
+        <div id="xp-bar" class="xp-bar"></div>
+      </div>
+      <p id="xp-text" class="hint">0 / 100 XP to next level</p>
+    </div>
+
     <div class="progress">
       <div class="progress-track">
         <div id="progress-bar"></div>
@@ -83,6 +94,20 @@
     </details>
 
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <div id="levelup-modal" class="levelup-overlay" hidden role="dialog" aria-modal="true" aria-live="assertive">
+      <div class="levelup-card">
+        <div class="levelup-burst" aria-hidden="true"></div>
+        <div class="levelup-sparkles" aria-hidden="true">
+          <span>✦</span><span>✧</span><span>✦</span><span>✧</span><span>✦</span><span>✧</span>
+        </div>
+        <p class="levelup-kicker">📖 Level Up! 📖</p>
+        <p id="levelup-level" class="levelup-level">Level 2</p>
+        <p id="levelup-rank" class="levelup-rank">Seeker</p>
+        <p id="levelup-rankup" class="levelup-rankup" hidden>✨ New Rank Unlocked! ✨</p>
+        <button id="levelup-dismiss" class="primary">Continue Reading</button>
+      </div>
+    </div>
 
     <footer>
       Progress is stored only in this browser (localStorage) — no account, no server.

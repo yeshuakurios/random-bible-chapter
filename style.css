@@ -7,6 +7,8 @@
   --accent: #7a4b2f;
   --accent-dark: #5c3821;
   --border: #e4ddd0;
+  --gold: #b8860b;
+  --gold-bright: #e0aa2e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +20,8 @@
     --accent: #c98a55;
     --accent-dark: #e0a06e;
     --border: #3a342e;
+    --gold: #e0aa2e;
+    --gold-bright: #f5cf6e;
   }
 }
 
@@ -370,6 +374,221 @@ details label {
   color: var(--text);
   resize: vertical;
   margin-bottom: 0.6rem;
+}
+
+/* --- Level / rank card --- */
+
+.level-card {
+  margin-top: 1.25rem;
+  padding: 1rem 1.5rem;
+  text-align: left;
+}
+
+.level-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.rank-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--gold);
+}
+
+.level-badge {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+}
+
+.xp-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.xp-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+  transition: width 0.3s ease;
+}
+
+#xp-text {
+  margin: 0.5rem 0 0;
+}
+
+/* --- Level-up celebration --- */
+
+.levelup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1.5rem;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.levelup-overlay.show {
+  opacity: 1;
+}
+
+.levelup-card {
+  position: relative;
+  width: min(100%, 340px);
+  background: var(--card);
+  border-radius: 16px;
+  padding: 2.5rem 1.75rem 1.75rem;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  transform: scale(0.85);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.levelup-overlay.show .levelup-card {
+  transform: scale(1);
+}
+
+.levelup-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 260%;
+  height: 260%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--gold) 8deg,
+    transparent 16deg,
+    transparent 40deg,
+    var(--gold) 48deg,
+    transparent 56deg,
+    transparent 80deg,
+    var(--gold) 88deg,
+    transparent 96deg,
+    transparent 120deg,
+    var(--gold) 128deg,
+    transparent 136deg,
+    transparent 160deg,
+    var(--gold) 168deg,
+    transparent 176deg,
+    transparent 200deg,
+    var(--gold) 208deg,
+    transparent 216deg,
+    transparent 240deg,
+    var(--gold) 248deg,
+    transparent 256deg,
+    transparent 280deg,
+    var(--gold) 288deg,
+    transparent 296deg,
+    transparent 320deg,
+    var(--gold) 328deg,
+    transparent 336deg
+  );
+  opacity: 0.18;
+  transform: translate(-50%, -50%);
+  animation: levelup-spin 12s linear infinite;
+  z-index: 0;
+}
+
+@keyframes levelup-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.levelup-sparkles {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.levelup-sparkles span {
+  position: absolute;
+  color: var(--gold-bright);
+  font-size: 1.2rem;
+  opacity: 0;
+  animation: levelup-sparkle 1.8s ease-in-out infinite;
+}
+
+.levelup-sparkles span:nth-child(1) { top: 10%; left: 15%; animation-delay: 0s; }
+.levelup-sparkles span:nth-child(2) { top: 20%; left: 80%; animation-delay: 0.2s; }
+.levelup-sparkles span:nth-child(3) { top: 75%; left: 12%; animation-delay: 0.4s; }
+.levelup-sparkles span:nth-child(4) { top: 80%; left: 82%; animation-delay: 0.6s; }
+.levelup-sparkles span:nth-child(5) { top: 5%; left: 50%; animation-delay: 0.8s; }
+.levelup-sparkles span:nth-child(6) { top: 88%; left: 48%; animation-delay: 1s; }
+
+@keyframes levelup-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.5) translateY(4px); }
+  50% { opacity: 1; transform: scale(1.15) translateY(-4px); }
+}
+
+.levelup-kicker {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.levelup-level {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 0.25rem;
+  font-size: 2.4rem;
+  font-weight: bold;
+  color: var(--gold);
+  animation: levelup-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes levelup-bounce {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.levelup-rank {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-style: italic;
+}
+
+.levelup-rankup {
+  position: relative;
+  z-index: 1;
+  margin: -0.5rem 0 1rem;
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: var(--gold-bright);
+  animation: levelup-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes levelup-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+#levelup-dismiss {
+  position: relative;
+  z-index: 1;
+  width: 100%;
 }
 
 footer {
