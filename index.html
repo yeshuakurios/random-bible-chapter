@@ -64,6 +64,24 @@
       <div id="book-map" class="book-map"></div>
     </details>
 
+    <details>
+      <summary>Backup &amp; restore</summary>
+      <p class="hint">
+        This app only stores progress in this browser. If you're using it as a
+        home-screen app, iOS can occasionally clear that storage on its own —
+        save a backup code now and then (e.g. into Notes) so you can restore
+        your progress if that happens.
+      </p>
+      <button id="backup-btn">Copy backup code</button>
+      <textarea id="backup-output" class="code-box" readonly rows="3" placeholder="Your backup code will appear here"></textarea>
+
+      <label for="restore-input">Restore from a backup code</label>
+      <textarea id="restore-input" class="code-box" rows="3" placeholder="Paste your backup code here"></textarea>
+      <button id="restore-btn">Restore</button>
+
+      <p id="backup-status" class="hint" aria-live="polite"></p>
+    </details>
+
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <footer>
