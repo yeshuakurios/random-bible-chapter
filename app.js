@@ -2,6 +2,21 @@ const STORAGE_KEY = "rbc:readLog";
 const PENDING_KEY = "rbc:pending";
 const ACHIEVEMENTS_KEY = "rbc:achievements";
 
+// Achievement labels contain emoji, which plain btoa()/atob() can't handle
+// (they only support Latin1) — encode/decode via UTF-8 bytes instead.
+function toBase64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  bytes.forEach((b) => (binary += String.fromCharCode(b)));
+  return btoa(binary);
+}
+
+function fromBase64(b64) {
+  const binary = atob(b64);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 const els = {
   chapter: document.getElementById("chapter-display"),
   getBtn: document.getElementById("get-btn"),
@@ -20,6 +35,11 @@ const els = {
   achievementsList: document.getElementById("achievements-list"),
   bookMap: document.getElementById("book-map"),
   toastContainer: document.getElementById("toast-container"),
+  backupBtn: document.getElementById("backup-btn"),
+  backupOutput: document.getElementById("backup-output"),
+  restoreInput: document.getElementById("restore-input"),
+  restoreBtn: document.getElementById("restore-btn"),
+  backupStatus: document.getElementById("backup-status"),
 };
 
 const TOTAL_CHAPTERS = BIBLE_BOOKS.reduce((sum, [, count]) => sum + count, 0);
@@ -419,9 +439,53 @@ function handleReset() {
   render();
 }
 
+function handleBackup() {
+  const code = toBase64(JSON.stringify({ v: 1, log: loadReadLog(), achievements: loadAchievements() }));
+  els.backupOutput.value = code;
+  els.backupOutput.select();
+  if (navigator.clipboard) {
+    navigator.clipboard
+      .writeText(code)
+      .then(() => {
+        els.backupStatus.textContent = "Copied to clipboard — paste it somewhere safe, like Notes.";
+      })
+      .catch(() => {
+        els.backupStatus.textContent = "Backup code ready below — copy it manually.";
+      });
+  } else {
+    els.backupStatus.textContent = "Backup code ready below — copy it manually.";
+  }
+}
+
+function handleRestore() {
+  const raw = els.restoreInput.value.trim();
+  if (!raw) return;
+  let payload;
+  try {
+    payload = JSON.parse(fromBase64(raw));
+  } catch {
+    els.backupStatus.textContent = "That doesn't look like a valid backup code.";
+    return;
+  }
+  if (!payload || !Array.isArray(payload.log)) {
+    els.backupStatus.textContent = "That doesn't look like a valid backup code.";
+    return;
+  }
+  if (!confirm("This replaces your current reading history and achievements with the backup. Continue?")) return;
+
+  saveReadLog(payload.log);
+  saveAchievements(Array.isArray(payload.achievements) ? payload.achievements : []);
+  localStorage.removeItem(PENDING_KEY);
+  els.restoreInput.value = "";
+  els.backupStatus.textContent = "Restored from backup!";
+  render();
+}
+
 els.getBtn.addEventListener("click", handleGet);
 els.markBtn.addEventListener("click", handleMark);
 els.skipBtn.addEventListener("click", handleSkip);
 els.resetBtn.addEventListener("click", handleReset);
+els.backupBtn.addEventListener("click", handleBackup);
+els.restoreBtn.addEventListener("click", handleRestore);
 
 render();
