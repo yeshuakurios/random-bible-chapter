@@ -96,12 +96,14 @@
     <details>
       <summary>Reading log sync</summary>
       <p class="hint">
-        Paste your reading log sync key to send each chapter you mark as read
-        to your private reading log automatically. This key is stored only in
-        this browser (localStorage) — it isn't part of the app's source code.
+        Paste a GitHub personal access token (fine-grained, scoped only to
+        your private reading-log repo's Contents permission) to send each
+        chapter you mark as read there automatically. This token is stored
+        only in this browser (localStorage) — it isn't part of the app's
+        source code.
       </p>
-      <label for="sync-secret-input">Sync key</label>
-      <input id="sync-secret-input" class="code-box" type="password" autocomplete="off" placeholder="Paste your sync key here" />
+      <label for="sync-secret-input">Sync token</label>
+      <input id="sync-secret-input" class="code-box" type="password" autocomplete="off" placeholder="Paste your GitHub token here" />
       <button id="sync-save-btn">Save sync key</button>
       <p id="sync-status" class="hint" aria-live="polite"></p>
     </details>
