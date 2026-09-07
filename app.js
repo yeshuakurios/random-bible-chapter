@@ -1,6 +1,8 @@
 const STORAGE_KEY = "rbc:readLog";
 const PENDING_KEY = "rbc:pending";
 const ACHIEVEMENTS_KEY = "rbc:achievements";
+const SYNC_SECRET_KEY = "rbc:syncSecret";
+const SYNC_LOG_URL = "https://bible-reading-log.vercel.app/api/log";
 
 // Achievement labels contain emoji, which plain btoa()/atob() can't handle
 // (they only support Latin1) — encode/decode via UTF-8 bytes instead.
@@ -40,6 +42,9 @@ const els = {
   restoreInput: document.getElementById("restore-input"),
   restoreBtn: document.getElementById("restore-btn"),
   backupStatus: document.getElementById("backup-status"),
+  syncSecretInput: document.getElementById("sync-secret-input"),
+  syncSaveBtn: document.getElementById("sync-save-btn"),
+  syncStatus: document.getElementById("sync-status"),
   rankName: document.getElementById("rank-name"),
   levelBadge: document.getElementById("level-badge"),
   xpBar: document.getElementById("xp-bar"),
@@ -160,6 +165,41 @@ function loadPending() {
 function savePending(key) {
   if (key === null) localStorage.removeItem(PENDING_KEY);
   else localStorage.setItem(PENDING_KEY, key);
+}
+
+// --- Reading log sync: best-effort POST of each marked-read chapter to a
+// private backend, so external tools (e.g. the AI Bible Commentary skill)
+// can find "read today" chapters without access to this browser's
+// localStorage. The sync key never ships in this repo's source — it's
+// pasted in by hand and kept only in localStorage.
+
+function loadSyncSecret() {
+  return localStorage.getItem(SYNC_SECRET_KEY);
+}
+
+function saveSyncSecret(secret) {
+  if (secret) localStorage.setItem(SYNC_SECRET_KEY, secret);
+  else localStorage.removeItem(SYNC_SECRET_KEY);
+}
+
+function syncReadChapter(key, timestamp) {
+  const secret = loadSyncSecret();
+  if (!secret) return;
+  fetch(SYNC_LOG_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Auth": secret },
+    body: JSON.stringify({ key, t: timestamp, date: localDateKey(new Date(timestamp)) }),
+  }).catch(() => {
+    // Best-effort only — reading progress is already saved locally
+    // regardless of whether the sync call succeeds.
+  });
+}
+
+function handleSyncSave() {
+  const secret = els.syncSecretInput.value.trim();
+  saveSyncSecret(secret);
+  els.syncSecretInput.value = "";
+  els.syncStatus.textContent = secret ? "Sync key saved on this device." : "Sync key cleared.";
 }
 
 // Uniform random integer in [0, max) using the Web Crypto API (rejection
@@ -359,6 +399,7 @@ function render() {
   renderHistory(readSet);
   renderAchievements();
   renderBookMap(readSet);
+  els.syncStatus.textContent = loadSyncSecret() ? "Sync key saved on this device." : "";
 }
 
 function renderLevel(readSet) {
@@ -505,8 +546,10 @@ function handleMark() {
   const oldReadSet = readKeysSet(oldLog);
   const oldLevel = levelForXp(computeTotalXp(oldReadSet, loadAchievements()));
 
-  const log = [...oldLog, { k: pending, t: Date.now() }];
+  const markedAt = Date.now();
+  const log = [...oldLog, { k: pending, t: markedAt }];
   saveReadLog(log);
+  syncReadChapter(pending, markedAt);
 
   const newReadSet = readKeysSet(log);
   const newBadges = computeNewBadges(newReadSet, pending);
@@ -585,6 +628,7 @@ els.skipBtn.addEventListener("click", handleSkip);
 els.resetBtn.addEventListener("click", handleReset);
 els.backupBtn.addEventListener("click", handleBackup);
 els.restoreBtn.addEventListener("click", handleRestore);
+els.syncSaveBtn.addEventListener("click", handleSyncSave);
 els.levelupDismiss.addEventListener("click", hideLevelUp);
 els.levelupModal.addEventListener("click", (e) => {
   if (e.target === els.levelupModal) hideLevelUp();
