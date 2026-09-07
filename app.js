@@ -2,7 +2,15 @@ const STORAGE_KEY = "rbc:readLog";
 const PENDING_KEY = "rbc:pending";
 const ACHIEVEMENTS_KEY = "rbc:achievements";
 const SYNC_SECRET_KEY = "rbc:syncSecret";
-const SYNC_LOG_URL = "https://bible-reading-log.vercel.app/api/log";
+// The reading log lives as a JSON file in a private GitHub repo (rather
+// than a custom backend) because GitHub's API is reachable from almost any
+// sandboxed environment — including the one running the AI Bible
+// Commentary skill that reads this file back — whereas a bespoke domain
+// often isn't on a sandbox's network allowlist.
+const SYNC_REPO_OWNER = "yeshuakurios";
+const SYNC_REPO_NAME = "ai-bible-commentary";
+const SYNC_REPO_PATH = "reading-log.json";
+const SYNC_API_URL = `https://api.github.com/repos/${SYNC_REPO_OWNER}/${SYNC_REPO_NAME}/contents/${SYNC_REPO_PATH}`;
 
 // Achievement labels contain emoji, which plain btoa()/atob() can't handle
 // (they only support Latin1) — encode/decode via UTF-8 bytes instead.
@@ -167,11 +175,11 @@ function savePending(key) {
   else localStorage.setItem(PENDING_KEY, key);
 }
 
-// --- Reading log sync: best-effort POST of each marked-read chapter to a
-// private backend, so external tools (e.g. the AI Bible Commentary skill)
-// can find "read today" chapters without access to this browser's
-// localStorage. The sync key never ships in this repo's source — it's
-// pasted in by hand and kept only in localStorage.
+// --- Reading log sync: best-effort append of each marked-read chapter to
+// reading-log.json in a private GitHub repo, so external tools (e.g. the
+// AI Bible Commentary skill) can find "read today" chapters without access
+// to this browser's localStorage. The token never ships in this repo's
+// source — it's pasted in by hand and kept only in localStorage.
 
 function loadSyncSecret() {
   return localStorage.getItem(SYNC_SECRET_KEY);
@@ -182,17 +190,39 @@ function saveSyncSecret(secret) {
   else localStorage.removeItem(SYNC_SECRET_KEY);
 }
 
-function syncReadChapter(key, timestamp) {
-  const secret = loadSyncSecret();
-  if (!secret) return;
-  fetch(SYNC_LOG_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Auth": secret },
-    body: JSON.stringify({ key, t: timestamp, date: localDateKey(new Date(timestamp)) }),
-  }).catch(() => {
+async function syncReadChapter(key, timestamp) {
+  const token = loadSyncSecret();
+  if (!token) return;
+  try {
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+    };
+    let sha;
+    let entries = [];
+    const getRes = await fetch(SYNC_API_URL, { headers });
+    if (getRes.ok) {
+      const data = await getRes.json();
+      sha = data.sha;
+      entries = JSON.parse(fromBase64(data.content.replace(/\s/g, "")));
+    } else if (getRes.status !== 404) {
+      return; // Best-effort only — don't retry or surface an error.
+    }
+
+    entries.push({ k: key, t: timestamp, date: localDateKey(new Date(timestamp)) });
+    await fetch(SYNC_API_URL, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `Log read: ${key}`,
+        content: toBase64(JSON.stringify(entries)),
+        ...(sha ? { sha } : {}),
+      }),
+    });
+  } catch {
     // Best-effort only — reading progress is already saved locally
     // regardless of whether the sync call succeeds.
-  });
+  }
 }
 
 function handleSyncSave() {

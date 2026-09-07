@@ -7,10 +7,14 @@ through the whole Bible in random order without duplicates.
 - No build step, no backend — plain HTML/CSS/JS.
 - Reading progress is stored in your browser's `localStorage` (per browser,
   not synced across devices).
-- Optionally, pasting a sync key under "Reading log sync" sends each chapter
-  you mark as read to a private backend, so other tools (like a commentary
-  pipeline) can look up what you read today. The key is never stored in this
-  repo — only in your browser's `localStorage`.
+- Optionally, pasting a GitHub token under "Reading log sync" appends each
+  chapter you mark as read to `reading-log.json` in a private GitHub repo
+  (via the GitHub Contents API), so other tools (like a commentary pipeline)
+  can look up what you read today. Using GitHub's API instead of a bespoke
+  backend keeps the log reachable from sandboxed environments that only
+  allow a small domain allowlist. The token is never stored in this repo —
+  only in your browser's `localStorage` — and should be a fine-grained
+  personal access token scoped to just that one repo's Contents permission.
 - Randomness comes from the Web Crypto API (`crypto.getRandomValues`) with
   rejection sampling, rather than `Math.random()`. See "How random is it?"
   below.
