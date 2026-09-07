@@ -93,6 +93,19 @@
       <p id="backup-status" class="hint" aria-live="polite"></p>
     </details>
 
+    <details>
+      <summary>Reading log sync</summary>
+      <p class="hint">
+        Paste your reading log sync key to send each chapter you mark as read
+        to your private reading log automatically. This key is stored only in
+        this browser (localStorage) — it isn't part of the app's source code.
+      </p>
+      <label for="sync-secret-input">Sync key</label>
+      <input id="sync-secret-input" class="code-box" type="password" autocomplete="off" placeholder="Paste your sync key here" />
+      <button id="sync-save-btn">Save sync key</button>
+      <p id="sync-status" class="hint" aria-live="polite"></p>
+    </details>
+
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <div id="levelup-modal" class="levelup-overlay" hidden role="dialog" aria-modal="true" aria-live="assertive">
