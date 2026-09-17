@@ -12,6 +12,12 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,900;1,600&display=swap"
+    rel="stylesheet"
+  />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -21,6 +27,10 @@
 
     <div class="card">
       <div id="chapter-display">Press the button to get a chapter</div>
+      <div id="read-timer" class="read-timer" hidden>
+        <div class="read-timer-track"><div id="read-timer-fill" class="read-timer-fill"></div></div>
+        <p id="read-timer-label" class="read-timer-label"></p>
+      </div>
       <div class="buttons">
         <button id="get-btn" class="primary">Get Random Chapter</button>
         <div id="action-row" class="button-row" hidden>
@@ -31,14 +41,23 @@
     </div>
 
     <div class="card level-card">
-      <div class="level-header">
-        <span id="rank-name" class="rank-name">Seeker</span>
-        <span id="level-badge" class="level-badge">Lv 1</span>
+      <div class="level-card-main">
+        <div id="level-ring" class="level-ring">
+          <div class="level-ring-inner">
+            <span id="level-badge" class="level-ring-value">1</span>
+            <span class="level-ring-label">Level</span>
+          </div>
+        </div>
+        <div class="level-card-info">
+          <p id="rank-name" class="rank-name">Seeker</p>
+          <div class="xp-track">
+            <div id="xp-bar" class="xp-bar"></div>
+          </div>
+          <p id="xp-text" class="hint">0 / 100 XP to next level</p>
+          <p id="xp-cap-note" class="xp-cap-note" hidden></p>
+        </div>
       </div>
-      <div class="xp-track">
-        <div id="xp-bar" class="xp-bar"></div>
-      </div>
-      <p id="xp-text" class="hint">0 / 100 XP to next level</p>
+      <p id="completions-line" class="completions-line" hidden></p>
     </div>
 
     <div class="progress">
@@ -47,10 +66,6 @@
       </div>
       <span id="progress-text">0 / 1189 chapters read</span>
     </div>
-
-    <p id="empty-state" hidden>
-      🎉 You've read every chapter! Reset below to start a new random cycle.
-    </p>
 
     <div class="card stats-card">
       <h2>Today</h2>
@@ -62,7 +77,7 @@
     <details>
       <summary>Reading history</summary>
       <ul id="history-list"></ul>
-      <button id="reset-btn">Reset reading history</button>
+      <button id="reset-btn">Erase everything &amp; start over</button>
     </details>
 
     <details>
@@ -81,7 +96,7 @@
         This app only stores progress in this browser. If you're using it as a
         home-screen app, iOS can occasionally clear that storage on its own —
         save a backup code now and then (e.g. into Notes) so you can restore
-        your progress if that happens.
+        your progress, level, and completions if that happens.
       </p>
       <button id="backup-btn">Copy backup code</button>
       <textarea id="backup-output" class="code-box" readonly rows="3" placeholder="Your backup code will appear here"></textarea>
@@ -116,10 +131,11 @@
         <div class="levelup-sparkles" aria-hidden="true">
           <span>✦</span><span>✧</span><span>✦</span><span>✧</span><span>✦</span><span>✧</span>
         </div>
-        <p class="levelup-kicker">📖 Level Up! 📖</p>
+        <p id="levelup-kicker" class="levelup-kicker">📖 Level Up! 📖</p>
         <p id="levelup-level" class="levelup-level">Level 2</p>
         <p id="levelup-rank" class="levelup-rank">Seeker</p>
         <p id="levelup-rankup" class="levelup-rankup" hidden>✨ New Rank Unlocked! ✨</p>
+        <p id="levelup-completion" class="levelup-completion" hidden></p>
         <button id="levelup-dismiss" class="primary">Continue Reading</button>
       </div>
     </div>

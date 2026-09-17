@@ -1,6 +1,8 @@
 const STORAGE_KEY = "rbc:readLog";
 const PENDING_KEY = "rbc:pending";
+const PENDING_SINCE_KEY = "rbc:pendingSince";
 const ACHIEVEMENTS_KEY = "rbc:achievements";
+const LIFETIME_KEY = "rbc:lifetime";
 const SYNC_SECRET_KEY = "rbc:syncSecret";
 // The reading log lives as a JSON file in a private GitHub repo (rather
 // than a custom backend) because GitHub's API is reachable from almost any
@@ -32,11 +34,13 @@ const els = {
   getBtn: document.getElementById("get-btn"),
   markBtn: document.getElementById("mark-btn"),
   skipBtn: document.getElementById("skip-btn"),
+  readTimer: document.getElementById("read-timer"),
+  readTimerFill: document.getElementById("read-timer-fill"),
+  readTimerLabel: document.getElementById("read-timer-label"),
   progressText: document.getElementById("progress-text"),
   progressBar: document.getElementById("progress-bar"),
   historyList: document.getElementById("history-list"),
   resetBtn: document.getElementById("reset-btn"),
-  emptyState: document.getElementById("empty-state"),
   actionRow: document.getElementById("action-row"),
   todayCount: document.getElementById("today-count"),
   todayList: document.getElementById("today-list"),
@@ -54,13 +58,18 @@ const els = {
   syncSaveBtn: document.getElementById("sync-save-btn"),
   syncStatus: document.getElementById("sync-status"),
   rankName: document.getElementById("rank-name"),
+  levelRing: document.getElementById("level-ring"),
   levelBadge: document.getElementById("level-badge"),
   xpBar: document.getElementById("xp-bar"),
   xpText: document.getElementById("xp-text"),
+  xpCapNote: document.getElementById("xp-cap-note"),
+  completionsLine: document.getElementById("completions-line"),
   levelupModal: document.getElementById("levelup-modal"),
+  levelupKicker: document.getElementById("levelup-kicker"),
   levelupLevel: document.getElementById("levelup-level"),
   levelupRank: document.getElementById("levelup-rank"),
   levelupRankup: document.getElementById("levelup-rankup"),
+  levelupCompletion: document.getElementById("levelup-completion"),
   levelupDismiss: document.getElementById("levelup-dismiss"),
 };
 
@@ -76,7 +85,25 @@ const TREND_WINDOW_DAYS = 7;
 
 // --- XP, levels, and ranks. Levels grow linearly (a flat XP amount per
 // level, not an escalating one) so progress always feels the same weight.
-const XP_PER_CHAPTER = 10;
+//
+// Anti-farming: XP is deliberately hard to grind past a genuine reading
+// pace. Two independent brakes apply:
+//   1. A minimum "dwell time" before a chapter can be marked read at all
+//      (see MIN_READ_SECONDS) — you can't rubber-stamp your way through
+//      the Bible with rapid clicks.
+//   2. A soft daily cap on full-value XP (see DAILY_FULL_XP_CAP) — chapters
+//      beyond the cap still count toward real reading progress and
+//      achievements, they just earn reduced XP toward your level, so a
+//      single binge session can't out-level weeks of steady reading.
+// On top of that, your level is "lifetime" — finishing the whole Bible
+// banks that cycle's XP permanently and starts a fresh no-repeat cycle, so
+// re-reading the whole Bible keeps raising your level rather than
+// resetting it. Level is meant to be an honest reflection of cumulative
+// time spent in Scripture, not a number that can be cheaply inflated.
+const XP_PER_CHAPTER_FULL = 10;
+const XP_PER_CHAPTER_REDUCED = 3;
+const DAILY_FULL_XP_CAP = 15;
+const MIN_READ_SECONDS = 25;
 const XP_PER_LEVEL = 100;
 
 const RANKS = [
@@ -94,18 +121,13 @@ const RANKS = [
   { min: 110, name: "Sage of Scripture" },
   { min: 120, name: "Faithful Witness" },
   { min: 130, name: "Keeper of the Covenant" },
+  { min: 145, name: "Beloved of God" },
 ];
 
 function milestoneXp(n) {
   if (n === TOTAL_CHAPTERS) return 500;
   if (n === HALFWAY) return 100;
   return 20;
-}
-
-function computeTotalXp(readSet, achievements) {
-  const chapterXp = readSet.size * XP_PER_CHAPTER;
-  const bonusXp = achievements.reduce((sum, a) => sum + (a.xp || 0), 0);
-  return chapterXp + bonusXp;
 }
 
 function levelForXp(xp) {
@@ -125,6 +147,12 @@ function getRank(level) {
   return current;
 }
 
+function ordinal(n) {
+  const suffixes = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]}`;
+}
+
 function allChapterKeys() {
   const keys = [];
   for (const [book, count] of BIBLE_BOOKS) {
@@ -138,9 +166,10 @@ function splitKey(key) {
   return [key.slice(0, lastSpace), Number(key.slice(lastSpace + 1))];
 }
 
-// --- Read log: an append-only array of { k: chapterKey, t: timestamp }.
-// Order doubles as "the exact order chapters were read in". `t` is null for
-// entries migrated from an older version of the app that didn't record time.
+// --- Read log: an append-only array of { k: chapterKey, t: timestamp,
+// xp: xpEarned }. Order doubles as "the exact order chapters were read in".
+// `t` is null and `xp` is absent for entries migrated from an older version
+// of the app that didn't record them.
 
 function loadReadLog() {
   try {
@@ -170,9 +199,73 @@ function loadPending() {
   return localStorage.getItem(PENDING_KEY);
 }
 
+function loadPendingSince() {
+  const raw = localStorage.getItem(PENDING_SINCE_KEY);
+  return raw ? Number(raw) : null;
+}
+
 function savePending(key) {
-  if (key === null) localStorage.removeItem(PENDING_KEY);
-  else localStorage.setItem(PENDING_KEY, key);
+  if (key === null) {
+    localStorage.removeItem(PENDING_KEY);
+    localStorage.removeItem(PENDING_SINCE_KEY);
+  } else {
+    localStorage.setItem(PENDING_KEY, key);
+    localStorage.setItem(PENDING_SINCE_KEY, String(Date.now()));
+  }
+}
+
+// --- Lifetime XP: banked permanently across reading cycles, so finishing
+// the whole Bible (and starting again) keeps raising your level instead of
+// resetting it.
+
+function loadLifetime() {
+  try {
+    const raw = localStorage.getItem(LIFETIME_KEY);
+    if (!raw) return { bankedXp: 0, completions: [] };
+    const parsed = JSON.parse(raw);
+    return {
+      bankedXp: typeof parsed.bankedXp === "number" ? parsed.bankedXp : 0,
+      completions: Array.isArray(parsed.completions) ? parsed.completions : [],
+    };
+  } catch {
+    return { bankedXp: 0, completions: [] };
+  }
+}
+
+function saveLifetime(lifetime) {
+  localStorage.setItem(LIFETIME_KEY, JSON.stringify(lifetime));
+}
+
+function computeCycleXp(log, achievements) {
+  const chapterXp = log.reduce((sum, e) => sum + (typeof e.xp === "number" ? e.xp : XP_PER_CHAPTER_FULL), 0);
+  const bonusXp = achievements.reduce((sum, a) => sum + (a.xp || 0), 0);
+  return chapterXp + bonusXp;
+}
+
+function computeLifetimeXp(log, achievements) {
+  return loadLifetime().bankedXp + computeCycleXp(log, achievements);
+}
+
+// The daily cap looks at how many chapters have already been logged today
+// (regardless of what they earned) to decide the rate for the *next* one.
+function xpForNextChapter(log) {
+  const todayCount = computeTodayEntries(log).length;
+  return todayCount < DAILY_FULL_XP_CAP ? XP_PER_CHAPTER_FULL : XP_PER_CHAPTER_REDUCED;
+}
+
+// Called whenever a cycle's read set turns out to be complete (either via
+// a live "Mark as Read" or a self-heal on load, e.g. after restoring a
+// backup). Banks the cycle's XP permanently and clears per-cycle state so
+// a fresh no-repeat cycle can begin.
+function bankCycleCompletion(log, achievements) {
+  const cycleXp = computeCycleXp(log, achievements);
+  const lifetime = loadLifetime();
+  lifetime.bankedXp += cycleXp;
+  lifetime.completions.push(Date.now());
+  saveLifetime(lifetime);
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(ACHIEVEMENTS_KEY);
+  return lifetime;
 }
 
 // --- Reading log sync: best-effort append of each marked-read chapter to
@@ -381,11 +474,34 @@ function showToasts(newBadges) {
   });
 }
 
+function resetLevelupModal() {
+  els.levelupModal.classList.remove("epic");
+  els.levelupKicker.textContent = "📖 Level Up! 📖";
+  els.levelupCompletion.hidden = true;
+}
+
 function showLevelUp(newLevel, oldRank, newRank) {
+  resetLevelupModal();
   const rankedUp = newRank.name !== oldRank.name;
   els.levelupLevel.textContent = `Level ${newLevel}`;
   els.levelupRank.textContent = newRank.name;
   els.levelupRankup.hidden = !rankedUp;
+  els.levelupModal.hidden = false;
+  requestAnimationFrame(() => els.levelupModal.classList.add("show"));
+}
+
+function showBibleCompleted(completionCount, newLevel, newRank) {
+  resetLevelupModal();
+  els.levelupModal.classList.add("epic");
+  els.levelupKicker.textContent = "🏆 The Whole Bible — Complete! 🏆";
+  els.levelupLevel.textContent = `Level ${newLevel}`;
+  els.levelupRank.textContent = newRank.name;
+  els.levelupRankup.hidden = true;
+  els.levelupCompletion.hidden = false;
+  els.levelupCompletion.textContent =
+    completionCount === 1
+      ? "This is your first full journey through Scripture. 📖✨"
+      : `This is your ${ordinal(completionCount)} full journey through Scripture. 📖✨`;
   els.levelupModal.hidden = false;
   requestAnimationFrame(() => els.levelupModal.classList.add("show"));
 }
@@ -400,15 +516,25 @@ function hideLevelUp() {
 // --- Rendering
 
 function render() {
-  const log = loadReadLog();
-  const readSet = readKeysSet(log);
+  let log = loadReadLog();
+  let readSet = readKeysSet(log);
+
+  // A completed cycle is always banked immediately (see bankCycleCompletion),
+  // but self-heal here too in case state was left complete by an older
+  // version of the app or a restored backup.
+  if (readSet.size === TOTAL_CHAPTERS) {
+    bankCycleCompletion(log, loadAchievements());
+    log = loadReadLog();
+    readSet = readKeysSet(log);
+  }
+
   let pending = loadPending();
 
   // Self-heal state left over from an older version of the app (or a
   // corrupted/edited storage) where reading history exists but there's no
   // chapter queued up — without this, the Get button would stay hidden
   // (since `started` is true) with no way left to fetch a new chapter.
-  if (pending === null && readSet.size > 0 && readSet.size < TOTAL_CHAPTERS) {
+  if (pending === null && readSet.size > 0) {
     pending = pickRandomUnread(readSet);
     savePending(pending);
   }
@@ -421,27 +547,81 @@ function render() {
   els.chapter.textContent = pending || "Press the button to get a chapter";
   els.getBtn.hidden = started;
   els.actionRow.hidden = pending === null;
-  els.emptyState.hidden = readSet.size < TOTAL_CHAPTERS;
 
-  renderLevel(readSet);
+  renderLevel(log);
   renderToday(log);
   renderTrend(log, readSet);
   renderHistory(readSet);
   renderAchievements();
   renderBookMap(readSet);
+  updateReadTimer();
   els.syncStatus.textContent = loadSyncSecret() ? "Sync key saved on this device." : "";
 }
 
-function renderLevel(readSet) {
-  const xp = computeTotalXp(readSet, loadAchievements());
+function renderLevel(log) {
+  const achievements = loadAchievements();
+  const lifetime = loadLifetime();
+  const xp = lifetime.bankedXp + computeCycleXp(log, achievements);
   const level = levelForXp(xp);
   const rank = getRank(level);
   const xpInLevel = xpIntoLevel(xp);
+  const pct = (xpInLevel / XP_PER_LEVEL) * 100;
 
   els.rankName.textContent = rank.name;
-  els.levelBadge.textContent = `Lv ${level}`;
-  els.xpBar.style.width = `${(xpInLevel / XP_PER_LEVEL) * 100}%`;
+  els.levelBadge.textContent = String(level);
+  els.levelRing.style.setProperty("--pct", `${pct}%`);
+  els.xpBar.style.width = `${pct}%`;
   els.xpText.textContent = `${xpInLevel} / ${XP_PER_LEVEL} XP to next level`;
+
+  const todayCount = computeTodayEntries(log).length;
+  if (todayCount >= DAILY_FULL_XP_CAP) {
+    els.xpCapNote.hidden = false;
+    els.xpCapNote.textContent = `🔥 Full-XP chapters used for today (${DAILY_FULL_XP_CAP}) — keep reading, they still count, and XP resumes at full strength tomorrow.`;
+  } else {
+    els.xpCapNote.hidden = true;
+  }
+
+  const completions = lifetime.completions.length;
+  if (completions > 0) {
+    els.completionsLine.hidden = false;
+    els.completionsLine.textContent = `🏆 ${completions} full ${completions === 1 ? "journey" : "journeys"} through the entire Bible`;
+  } else {
+    els.completionsLine.hidden = true;
+  }
+}
+
+function updateReadTimer() {
+  const pending = loadPending();
+  if (!pending) {
+    els.readTimer.hidden = true;
+    els.markBtn.disabled = false;
+    els.markBtn.classList.remove("waiting");
+    return;
+  }
+
+  const since = loadPendingSince();
+  const elapsed = since ? (Date.now() - since) / 1000 : MIN_READ_SECONDS;
+  const remaining = Math.max(0, MIN_READ_SECONDS - elapsed);
+
+  if (remaining <= 0) {
+    els.readTimer.hidden = true;
+    els.markBtn.disabled = false;
+    els.markBtn.classList.remove("waiting");
+    return;
+  }
+
+  els.readTimer.hidden = false;
+  els.markBtn.disabled = true;
+  els.markBtn.classList.add("waiting");
+  const pct = ((MIN_READ_SECONDS - remaining) / MIN_READ_SECONDS) * 100;
+  els.readTimerFill.style.width = `${pct}%`;
+  els.readTimerLabel.textContent = `Take a moment to read — ${Math.ceil(remaining)}s`;
+}
+
+function isMarkReady() {
+  const since = loadPendingSince();
+  if (since == null) return true;
+  return (Date.now() - since) / 1000 >= MIN_READ_SECONDS;
 }
 
 function renderToday(log) {
@@ -571,27 +751,40 @@ function handleGet() {
 function handleMark() {
   const pending = loadPending();
   if (!pending) return;
+  if (!isMarkReady()) return; // anti-farming: mirrors the disabled button state
 
   const oldLog = loadReadLog();
-  const oldReadSet = readKeysSet(oldLog);
-  const oldLevel = levelForXp(computeTotalXp(oldReadSet, loadAchievements()));
+  const oldAchievements = loadAchievements();
+  const oldLevel = levelForXp(computeLifetimeXp(oldLog, oldAchievements));
+  const oldRank = getRank(oldLevel);
 
   const markedAt = Date.now();
-  const log = [...oldLog, { k: pending, t: markedAt }];
+  const xpEarned = xpForNextChapter(oldLog);
+  const log = [...oldLog, { k: pending, t: markedAt, xp: xpEarned }];
   saveReadLog(log);
   syncReadChapter(pending, markedAt);
 
   const newReadSet = readKeysSet(log);
   const newBadges = computeNewBadges(newReadSet, pending);
   persistAchievements(newBadges);
+  const achievements = loadAchievements();
 
-  const newLevel = levelForXp(computeTotalXp(newReadSet, loadAchievements()));
+  if (newReadSet.size === TOTAL_CHAPTERS) {
+    const lifetime = bankCycleCompletion(log, achievements);
+    const newLevel = levelForXp(lifetime.bankedXp);
+    savePending(pickRandomUnread(new Set()));
+    render();
+    showToasts(newBadges);
+    showBibleCompleted(lifetime.completions.length, newLevel, getRank(newLevel));
+    return;
+  }
 
   savePending(pickRandomUnread(newReadSet));
+  const newLevel = levelForXp(computeLifetimeXp(log, achievements));
   render();
   showToasts(newBadges);
   if (newLevel > oldLevel) {
-    showLevelUp(newLevel, getRank(oldLevel), getRank(newLevel));
+    showLevelUp(newLevel, oldRank, getRank(newLevel));
   }
 }
 
@@ -603,15 +796,27 @@ function handleSkip() {
 }
 
 function handleReset() {
-  if (!confirm("Clear your entire reading history, achievements, and start a new cycle?")) return;
+  const confirmed = confirm(
+    "This erases your entire reading history, achievements, and your lifetime level — including all Bible completions — and starts over from Level 1. This cannot be undone. Continue?"
+  );
+  if (!confirmed) return;
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(PENDING_KEY);
+  localStorage.removeItem(PENDING_SINCE_KEY);
   localStorage.removeItem(ACHIEVEMENTS_KEY);
+  localStorage.removeItem(LIFETIME_KEY);
   render();
 }
 
 function handleBackup() {
-  const code = toBase64(JSON.stringify({ v: 1, log: loadReadLog(), achievements: loadAchievements() }));
+  const code = toBase64(
+    JSON.stringify({
+      v: 2,
+      log: loadReadLog(),
+      achievements: loadAchievements(),
+      lifetime: loadLifetime(),
+    })
+  );
   els.backupOutput.value = code;
   els.backupOutput.select();
   if (navigator.clipboard) {
@@ -642,11 +847,17 @@ function handleRestore() {
     els.backupStatus.textContent = "That doesn't look like a valid backup code.";
     return;
   }
-  if (!confirm("This replaces your current reading history and achievements with the backup. Continue?")) return;
+  if (!confirm("This replaces your current reading history, achievements, and level with the backup. Continue?")) return;
 
   saveReadLog(payload.log);
   saveAchievements(Array.isArray(payload.achievements) ? payload.achievements : []);
+  const lifetime = payload.lifetime && typeof payload.lifetime === "object" ? payload.lifetime : {};
+  saveLifetime({
+    bankedXp: typeof lifetime.bankedXp === "number" ? lifetime.bankedXp : 0,
+    completions: Array.isArray(lifetime.completions) ? lifetime.completions : [],
+  });
   localStorage.removeItem(PENDING_KEY);
+  localStorage.removeItem(PENDING_SINCE_KEY);
   els.restoreInput.value = "";
   els.backupStatus.textContent = "Restored from backup!";
   render();
@@ -663,6 +874,11 @@ els.levelupDismiss.addEventListener("click", hideLevelUp);
 els.levelupModal.addEventListener("click", (e) => {
   if (e.target === els.levelupModal) hideLevelUp();
 });
+
+// Ticks the read-timer countdown while a chapter is pending. render() also
+// calls updateReadTimer() directly so state-changing actions reflect
+// immediately without waiting for the next tick.
+setInterval(updateReadTimer, 500);
 
 // Ask the browser not to evict this site's storage under normal storage
 // pressure (supported on Chrome/Firefox/Edge; Safari ignores the call but
