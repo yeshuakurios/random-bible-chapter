@@ -9,6 +9,9 @@
   --border: #e4ddd0;
   --gold: #b8860b;
   --gold-bright: #e0aa2e;
+  --font-body: "Georgia", "Iowan Old Style", serif;
+  --font-display: "Playfair Display", Georgia, serif;
+  --shadow-card: 0 4px 24px rgba(74, 44, 24, 0.08), 0 1px 2px rgba(74, 44, 24, 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,6 +25,7 @@
     --border: #3a342e;
     --gold: #e0aa2e;
     --gold-bright: #f5cf6e;
+    --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
   }
 }
 
@@ -39,20 +43,28 @@ body {
   display: flex;
   justify-content: center;
   padding: 2.5rem 1rem;
-  background: var(--bg);
+  background: radial-gradient(circle at 50% -10%, rgba(224, 170, 46, 0.12), transparent 55%), var(--bg);
   color: var(--text);
-  font-family: "Georgia", "Iowan Old Style", serif;
+  font-family: var(--font-body);
 }
 
 main {
   width: 100%;
   max-width: 480px;
+  animation: fade-up 0.55s ease both;
 }
 
 h1 {
   text-align: center;
-  font-size: 1.6rem;
-  margin-bottom: 0.25rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2.1rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.3rem;
+  background: linear-gradient(100deg, var(--accent-dark), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .subtitle {
@@ -66,14 +78,16 @@ h1 {
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.75rem;
+  border-radius: 16px;
+  padding: 1.85rem;
   text-align: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 #chapter-display {
-  font-size: 1.6rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.7rem;
   min-height: 2.4em;
   display: flex;
   align-items: center;
@@ -95,33 +109,73 @@ h1 {
 button {
   font-family: inherit;
   font-size: 1rem;
-  padding: 0.65rem 1rem;
-  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
   cursor: pointer;
   flex: 1;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  border-color: transparent;
   color: #fff;
+  box-shadow: 0 3px 14px rgba(74, 44, 24, 0.28);
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--accent-dark);
-  border-color: var(--accent-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(74, 44, 24, 0.32);
+}
+
+button.primary.waiting:disabled {
+  background: var(--border);
+  color: var(--muted);
+  box-shadow: none;
+  cursor: progress;
+  opacity: 0.9;
 }
 
 button:not(.primary):hover:not(:disabled) {
   border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* --- Read timer (anti-farming dwell gate) --- */
+
+.read-timer {
+  margin: -0.4rem 0 1.1rem;
+}
+
+.read-timer-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.read-timer-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--gold-bright));
+  transition: width 0.4s linear;
+}
+
+.read-timer-label {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+  font-style: italic;
 }
 
 .progress {
@@ -138,7 +192,7 @@ button:not(.primary):hover:not(:disabled) {
 #progress-bar {
   height: 100%;
   width: 0%;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--accent), var(--accent-dark));
   transition: width 0.3s ease;
 }
 
@@ -146,13 +200,6 @@ button:not(.primary):hover:not(:disabled) {
   display: block;
   text-align: center;
   margin-top: 0.5rem;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-#empty-state {
-  margin-top: 1rem;
-  text-align: center;
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -175,7 +222,7 @@ summary {
   max-height: 220px;
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--card);
 }
 
@@ -208,7 +255,9 @@ summary {
 
 .stats-card h2 {
   margin: 0 0 0.5rem;
-  font-size: 1.05rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
 }
 
 #today-count {
@@ -256,7 +305,7 @@ summary {
   max-height: 220px;
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--card);
 }
 
@@ -307,7 +356,7 @@ summary {
   position: absolute;
   inset: auto 0 0 0;
   height: var(--pct, 0%);
-  background: var(--accent);
+  background: linear-gradient(0deg, var(--accent), var(--gold-bright));
   opacity: 0.55;
   z-index: 0;
   transition: height 0.3s ease;
@@ -332,13 +381,13 @@ summary {
 }
 
 .toast {
-  background: var(--accent-dark);
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
   color: #fff;
   padding: 0.7rem 1rem;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 0.9rem;
   text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
   opacity: 0;
   transform: translateY(12px);
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -380,31 +429,78 @@ details label {
 
 .level-card {
   margin-top: 1.25rem;
-  padding: 1rem 1.5rem;
+  padding: 1.35rem 1.5rem;
   text-align: left;
 }
 
-.level-header {
+.level-card-main {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
+  align-items: center;
+  gap: 1.25rem;
 }
 
-.rank-name {
-  font-size: 1.1rem;
-  font-weight: bold;
+.level-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.level-ring {
+  --pct: 0%;
+  flex: 0 0 auto;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: conic-gradient(var(--gold-bright) var(--pct), var(--border) 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 2px 14px rgba(184, 134, 11, 0.25);
+  transition: background 0.4s ease;
+}
+
+.level-ring::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: var(--card);
+}
+
+.level-ring-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.level-ring-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.7rem;
   color: var(--gold);
 }
 
-.level-badge {
-  font-size: 0.85rem;
-  font-weight: bold;
+.level-ring-label {
+  display: block;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--muted);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.15rem 0.7rem;
+  margin-top: 1px;
+}
+
+.rank-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  margin: 0 0 0.5rem;
+  background: linear-gradient(100deg, var(--gold), var(--accent-dark));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .xp-track {
@@ -423,6 +519,26 @@ details label {
 
 #xp-text {
   margin: 0.5rem 0 0;
+}
+
+.xp-cap-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.completions-line {
+  margin: 1.1rem 0 0;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(184, 134, 11, 0.14), rgba(224, 170, 46, 0.14));
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-align: center;
 }
 
 /* --- Level-up celebration --- */
@@ -448,7 +564,7 @@ details label {
   position: relative;
   width: min(100%, 340px);
   background: var(--card);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 2.5rem 1.75rem 1.75rem;
   text-align: center;
   overflow: hidden;
@@ -459,6 +575,15 @@ details label {
 
 .levelup-overlay.show .levelup-card {
   transform: scale(1);
+}
+
+.levelup-card.epic {
+  background: linear-gradient(160deg, var(--card), rgba(224, 170, 46, 0.1));
+  box-shadow: 0 0 0 1px rgba(224, 170, 46, 0.45), 0 16px 55px rgba(184, 134, 11, 0.4);
+}
+
+.levelup-card.epic .levelup-burst {
+  opacity: 0.32;
 }
 
 .levelup-burst {
@@ -550,6 +675,7 @@ details label {
   position: relative;
   z-index: 1;
   margin: 0 0 0.25rem;
+  font-family: var(--font-display);
   font-size: 2.4rem;
   font-weight: bold;
   color: var(--gold);
@@ -566,6 +692,7 @@ details label {
   position: relative;
   z-index: 1;
   margin: 0 0 1rem;
+  font-family: var(--font-display);
   font-size: 1.15rem;
   font-style: italic;
 }
@@ -585,6 +712,15 @@ details label {
   50% { opacity: 1; }
 }
 
+.levelup-completion {
+  position: relative;
+  z-index: 1;
+  margin: -0.5rem 0 1.25rem;
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
 #levelup-dismiss {
   position: relative;
   z-index: 1;
@@ -600,4 +736,24 @@ footer {
 
 footer a {
   color: inherit;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
